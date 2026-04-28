@@ -5,10 +5,16 @@ name: iOS Build (unsigned IPA)
 # No Mac required. Free Apple ID works (7-day expiry, 3-app limit).
 #
 # Prerequisites (one-time setup):
-#   Add secrets in repo Settings → Secrets and variables → Actions:
+#   1. Generate a Unity activation file:
+#      - Run the "Acquire Unity activation file (.alf)" workflow once
+#      - Download the .alf artifact
+#      - Upload to https://license.unity3d.com/manual
+#      - Download the resulting .ulf file
+#      - Copy contents to GitHub secret UNITY_LICENSE
+#   2. Add secrets in repo Settings → Secrets and variables → Actions:
+#      - UNITY_LICENSE: the entire contents of the .ulf file (XML)
 #      - UNITY_EMAIL: your Unity account email
 #      - UNITY_PASSWORD: your Unity account password
-#   (Unity Personal uses entitlement-based activation — no serial needed.)
 #
 # To trigger a build:
 #   - Click the "Run workflow" button on this workflow page
@@ -51,12 +57,12 @@ jobs:
 
       # =====================================================================
       # 3. Build Unity iOS Xcode project
-      #    Unity Personal license uses entitlement-based activation:
-      #    just UNITY_EMAIL + UNITY_PASSWORD (NO serial — that's Pro only).
+      #    Unity Personal: UNITY_LICENSE = .ulf file contents (XML).
       # =====================================================================
       - name: Build Unity iOS Xcode project
         uses: game-ci/unity-builder@v4
         env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
