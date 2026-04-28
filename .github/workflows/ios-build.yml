@@ -85,39 +85,78 @@ jobs:
           find . -name "*.xcodeproj" -type d 2>/dev/null || true
 
       # =====================================================================
-      # 5. Compile the Xcode project → unsigned .app
+      # 5a. Install CocoaPods dependencies
+      #     Unity Ads / Purchasing / Analytics generate a Podfile that needs
+      #     to be installed before xcodebuild can link their frameworks.
+      # =====================================================================
+      - name: Run pod install
+        run: |
+          set -e
+
+          XCODEPROJ=$(find build -name "Unity-iPhone.xcodeproj" -type d 2>/dev/null | head -n 1)
+          if [ -z "${XCODEPROJ}" ]; then
+            echo "ERROR: No Unity-iPhone.xcodeproj found"
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "${XCODEPROJ}")
+          echo "Project dir: ${PROJECT_DIR}"
+
+          if [ -f "${PROJECT_DIR}/Podfile" ]; then
+            echo "==== Found Podfile, running pod install ===="
+            cd "${PROJECT_DIR}"
+            pod install --repo-update
+          else
+            echo "No Podfile found — skipping pod install"
+          fi
+
+      # =====================================================================
+      # 5b. Compile the Xcode workspace (with Pods) → unsigned .app
       # =====================================================================
       - name: Build .app with xcodebuild (unsigned)
         run: |
           set -e
 
-          # Auto-discover the Xcode project — GameCI's output path can vary
+          # Prefer .xcworkspace (created by pod install) over .xcodeproj
+          XCWORKSPACE=$(find build -name "Unity-iPhone.xcworkspace" -type d 2>/dev/null | head -n 1)
           XCODEPROJ=$(find build -name "Unity-iPhone.xcodeproj" -type d 2>/dev/null | head -n 1)
-
-          if [ -z "${XCODEPROJ}" ]; then
-            echo "ERROR: No Unity-iPhone.xcodeproj found anywhere under build/"
-            echo "==== Full build/ listing ===="
-            find build -maxdepth 5 2>/dev/null || true
-            exit 1
-          fi
-
-          echo "Found Xcode project at: ${XCODEPROJ}"
 
           mkdir -p build_output
 
-          xcodebuild \
-            -project "${XCODEPROJ}" \
-            -scheme Unity-iPhone \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath build_output \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGN_IDENTITY="" \
-            PROVISIONING_PROFILE="" \
-            DEVELOPMENT_TEAM="" \
-            ONLY_ACTIVE_ARCH=NO \
-            build
+          if [ -n "${XCWORKSPACE}" ]; then
+            echo "Building workspace: ${XCWORKSPACE}"
+            xcodebuild \
+              -workspace "${XCWORKSPACE}" \
+              -scheme Unity-iPhone \
+              -configuration Release \
+              -sdk iphoneos \
+              -derivedDataPath build_output \
+              -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              PROVISIONING_PROFILE="" \
+              DEVELOPMENT_TEAM="" \
+              ONLY_ACTIVE_ARCH=NO \
+              build
+          elif [ -n "${XCODEPROJ}" ]; then
+            echo "Building project (no workspace): ${XCODEPROJ}"
+            xcodebuild \
+              -project "${XCODEPROJ}" \
+              -scheme Unity-iPhone \
+              -configuration Release \
+              -sdk iphoneos \
+              -derivedDataPath build_output \
+              -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              PROVISIONING_PROFILE="" \
+              DEVELOPMENT_TEAM="" \
+              ONLY_ACTIVE_ARCH=NO \
+              build
+          else
+            echo "ERROR: No Xcode project or workspace found"
+            find build -maxdepth 5 2>/dev/null || true
+            exit 1
+          fi
 
       # =====================================================================
       # 6. Wrap the .app into an unsigned .ipa
