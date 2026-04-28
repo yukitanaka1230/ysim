@@ -5,13 +5,10 @@ name: iOS Build (unsigned IPA)
 # No Mac required. Free Apple ID works (7-day expiry, 3-app limit).
 #
 # Prerequisites (one-time setup):
-#   1. Get your Unity serial number from https://id.unity.com/
-#      - Go to Licenses → Your licenses → Find your Unity Personal license
-#      - Copy the serial number (e.g., F4-DJ3U-2SJZ-UWPC-KTSM-XXXX)
-#   2. Add secrets in repo Settings → Secrets and variables → Actions:
+#   Add secrets in repo Settings → Secrets and variables → Actions:
 #      - UNITY_EMAIL: your Unity account email
 #      - UNITY_PASSWORD: your Unity account password
-#      - UNITY_SERIAL: your Unity serial number
+#   (Unity Personal uses entitlement-based activation — no serial needed.)
 #
 # To trigger a build:
 #   - Click the "Run workflow" button on this workflow page
@@ -54,15 +51,14 @@ jobs:
 
       # =====================================================================
       # 3. Build Unity iOS Xcode project
-      #    unity-builder@v4 handles license activation automatically using
-      #    UNITY_EMAIL + UNITY_PASSWORD + UNITY_SERIAL env vars.
+      #    Unity Personal license uses entitlement-based activation:
+      #    just UNITY_EMAIL + UNITY_PASSWORD (NO serial — that's Pro only).
       # =====================================================================
       - name: Build Unity iOS Xcode project
         uses: game-ci/unity-builder@v4
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           unityVersion: 6000.4.0f1
           targetPlatform: iOS
